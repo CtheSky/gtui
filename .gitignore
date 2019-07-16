@@ -1,0 +1,15 @@
+# Folder view configuration files
+.DS_Store
+
+# Thumbnail cache files
+Thumbs.db
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
