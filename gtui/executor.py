@@ -165,6 +165,14 @@ class Executor:
             return TaskStatus.Failure
         return TaskStatus.Success
 
+    def get_task_log_records(self, task: Task):
+        thread = self.task2thread[task]
+        records = self.log_collector.get_thread_log_records(thread.name)
+        return records
+
+    def get_main_thread_log_records(self):
+        return self.log_collector.get_main_thread_log_records()
+
     def if_all_tasks_success(self, tasks=None):
         if tasks is None:
             tasks = self.graph.tasks

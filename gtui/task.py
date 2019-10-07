@@ -50,4 +50,3 @@ class TaskGraph:
         for t1, t2 in zip(tasks[:-1], tasks[1:]):
             graph.add_run_dependency(t2, waiting_for=t1)
         return graph
-

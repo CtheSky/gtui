@@ -1,19 +1,31 @@
-import time
-import urwid
+"""
+A Visualizer to display the Text User Interface.
+
+It's based on the awesome lib urwid. It uses the
+executor implemented in gtui.executor to execute
+the tasks and track the output & logs of each task.
+"""
 import string
 import logging
+
+import urwid
 import pyperclip
 
 from .task import Task, TaskStatus, TaskGraph
 from .executor import Executor
 from .utils import notify
 from .utils import urwid_scroll
+from .utils import default_log_formatter
 
 logger = logging.getLogger(__name__)
 
 
-class TabWithDisplay:
-    """抽象了对应一个输出的 Sidebar Tab 标签，子类实现不同的获取输出的逻辑, widget 为对应在 Sidebar 中的 Text Widget"""
+class Tab:
+    """
+    An UI element to be displayed on the sidebar.
+    It controls how the sidbar item is rendered and
+    track the output associated with this tab.
+    """
 
     UNICODE_CROSS = '\U00002717'
     UNICODE_CHECK_MARK = '\U00002713'
@@ -23,15 +35,28 @@ class TabWithDisplay:
         self.index = index
         self.widget = widget
         self.selected = False
+        self.spinner_index = 0
 
     def update_display(self):
         txt = '{index}{selected}| {status} {name}'.format(
             index=self.index,
             selected='*' if self.selected else ' ',
-            status=self.status,
+            status=self.tab_status_str,
             name=self.name
         )
         self.widget.set_text(txt)
+
+    @property
+    def tab_status_str(self):
+        """str : represents the current task status"""
+        if self.status == TaskStatus.Success:
+            return self.UNICODE_CHECK_MARK
+        if self.status == TaskStatus.Failure:
+            return self.UNICODE_CROSS
+        if self.status == TaskStatus.Running:
+            self.spinner_index = (self.spinner_index + 1) % len(self.UNICODE_SPINNER_LIST)
+            return self.UNICODE_SPINNER_LIST[self.spinner_index]
+        return ' '
 
     @property
     def name(self):
@@ -39,19 +64,19 @@ class TabWithDisplay:
 
     @property
     def status(self):
-        """str : status of the sidebar task"""
+        """str : one of the enums defined in TaskStatus"""
 
     @property
     def output(self):
         """str : output of the sidebar task"""
 
-class TabWithTaskOutput(TabWithDisplay):
+class TabForTaskOutput(Tab):
+    """Tab to display task output"""
 
     def __init__(self, index, task, executor):
         super().__init__(index, urwid.Text(''))
         self.task: Task = task
         self.executor: Executor = executor
-        self.spinner_index = 0
         self.update_display()
 
     @property
@@ -60,27 +85,35 @@ class TabWithTaskOutput(TabWithDisplay):
 
     @property
     def status(self):
-        status = self.executor.get_task_status(self.task)
-        if status == TaskStatus.Success:
-            return self.UNICODE_CHECK_MARK
-        if status == TaskStatus.Failure:
-            return self.UNICODE_CROSS
-        if status == TaskStatus.Running:
-            self.spinner_index = (self.spinner_index + 1) % len(self.UNICODE_SPINNER_LIST)
-            return self.UNICODE_SPINNER_LIST[self.spinner_index]
-        return ' '
+        return self.executor.get_task_status(self.task)
 
     @property
     def output(self):
         return self.executor.get_task_output(self.task)
 
-class TabWithTaskLogInfo(TabWithDisplay):
+class TabForLog(Tab):
+    """Tab to display logs"""
 
-    def __init__(self, index, task, executor):
-        super().__init__(index, urwid.Text(''))
+    def __init__(self, index, widget: urwid.Text, log_formatter: logging.Formatter):
+        super().__init__(index, widget)
+        self.log_formatter = log_formatter
+
+    @property
+    def records(self):
+        """Return a list of log records"""
+
+    @property
+    def output(self):
+        output = '\n'.join([self.log_formatter.format(r) for r in self.records])
+        return output
+
+class TabForTaskLog(TabForLog):
+    """Tab to display task logs"""
+
+    def __init__(self, index, task, executor, log_formatter):
+        super().__init__(index, urwid.Text(''), log_formatter)
         self.task: Task = task
         self.executor: Executor = executor
-        self.spinner_index = 0
         self.update_display()
 
     @property
@@ -89,35 +122,19 @@ class TabWithTaskLogInfo(TabWithDisplay):
 
     @property
     def status(self):
-        status = self.executor.get_task_status(self.task)
-        if status == TaskStatus.Success:
-            return self.UNICODE_CHECK_MARK
-        if status == TaskStatus.Failure:
-            return self.UNICODE_CROSS
-        if status == TaskStatus.Running:
-            self.spinner_index = (self.spinner_index + 1) % len(self.UNICODE_SPINNER_LIST)
-            return self.UNICODE_SPINNER_LIST[self.spinner_index]
-        return ' '
+        return self.executor.get_task_status(self.task)
 
     @property
-    def output(self):
-        thread = self.executor.get_task_thread(self.task)
-        records = self.executor.log_collector.get_thread_log_records(thread.name)
-        output = '\n'.join([
-            '[{}][{}][{}]'.format(
-                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(r.created)),
-                r.name,
-                r.getMessage()
-            ) for r in records
-        ])
-        return output
+    def records(self):
+        return self.executor.get_task_log_records(self.task)
 
-class TabWithMainTheadLogInfo(TabWithDisplay):
 
-    def __init__(self, index, executor):
-        super().__init__(index, urwid.Text(''))
+class TabForMainThreadLog(TabForLog):
+    """Tab to display TUI main event loop logs"""
+
+    def __init__(self, index, executor, log_formatter):
+        super().__init__(index, urwid.Text(''), log_formatter)
         self.executor: Executor = executor
-        self.spinner_index = 0
         self.update_display()
 
     @property
@@ -126,20 +143,11 @@ class TabWithMainTheadLogInfo(TabWithDisplay):
 
     @property
     def status(self):
-        self.spinner_index = (self.spinner_index + 1) % len(self.UNICODE_SPINNER_LIST)
-        return self.UNICODE_SPINNER_LIST[self.spinner_index]
+        return TaskStatus.Running
 
     @property
-    def output(self):
-        records = self.executor.log_collector.get_main_thread_log_records()
-        output = '\n'.join([
-            '[{}][{}][{}]'.format(
-                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(r.created)),
-                r.name,
-                r.getMessage()
-            ) for r in records
-        ])
-        return output
+    def records(self):
+        return self.executor.get_main_thread_log_records()
 
 
 class Visualizer:
@@ -164,7 +172,10 @@ class Visualizer:
 
     TAB_INDEX = list(string.digits)[1:] + list(string.ascii_lowercase)
 
-    def __init__(self, graph: TaskGraph, title='Demo', success_msg='Success', fail_msg='Failed'):
+    def __init__(self, graph: TaskGraph, title='Demo',
+                 success_msg='Success', fail_msg='Failed',
+                 formatter=default_log_formatter
+    ):
         self.tasks = graph.tasks
         self.success_msg = success_msg
         self.fail_msg = fail_msg
@@ -176,18 +187,18 @@ class Visualizer:
         self.index2debug_tab = {}
         for i, task in enumerate(self.tasks):
             index = self.TAB_INDEX[i]
-            tab = TabWithTaskOutput(index, task, self.executor)
+            tab = TabForTaskOutput(index, task, self.executor)
             self.index2tab[index] = tab
             self.index2task_tab[index] = tab
 
         main_debug_tab_index = self.TAB_INDEX[len(self.tasks)]
-        main_debug_tab = TabWithMainTheadLogInfo(main_debug_tab_index, self.executor)
+        main_debug_tab = TabForMainThreadLog(main_debug_tab_index, self.executor, formatter)
         self.index2tab[main_debug_tab_index] = main_debug_tab
         self.index2debug_tab[main_debug_tab_index] = main_debug_tab
 
         for i, task in enumerate(self.tasks):
             index = self.TAB_INDEX[i + len(self.tasks) + 1]
-            tab = TabWithTaskLogInfo(index, task, self.executor)
+            tab = TabForTaskLog(index, task, self.executor, formatter)
             self.index2tab[index] = tab
             self.index2debug_tab[index] = tab
 
