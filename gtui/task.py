@@ -36,10 +36,34 @@ class TaskGraph:
         """Add execution dependency to this graph"""
         self.task2waiting_for[task].append(waiting_for)
 
-    def run(self):
-        """A hepler function to run this task graph"""
+    def run(self,
+            title='Demo',
+            callback=None,
+            log_formatter=None):
+        """A hepler function to run this task graph
+
+        Parameters
+        ----------
+        title : str
+            The title of TUI, will be displayed at left bottom corner.
+        callback : functoin
+            A function which accepts a boolean indicating whether execution succeeds.
+            It will be called when execution finishes.
+        log_formatter: logging.Formatter
+            An instance of logging.Formatter. Defaults to gtui.utils.default_log_formatter.
+        """
         from .visualizer import Visualizer
-        Visualizer(self).run()
+        from .utils import default_log_formatter
+
+        if not log_formatter:
+            log_formatter = default_log_formatter
+
+        Visualizer(
+            graph=self,
+            title=title,
+            callback=callback,
+            log_formatter=log_formatter
+        ).run()
 
     @classmethod
     def linear_graph_from_list(cls, tasks):

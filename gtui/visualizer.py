@@ -13,7 +13,6 @@ import pyperclip
 
 from .task import Task, TaskStatus, TaskGraph
 from .executor import Executor
-from .utils import notify
 from .utils import urwid_scroll
 from .utils import default_log_formatter
 
@@ -172,14 +171,22 @@ class Visualizer:
 
     TAB_INDEX = list(string.digits)[1:] + list(string.ascii_lowercase)
 
-    def __init__(self, graph: TaskGraph, title='Demo',
-                 success_msg='Success', fail_msg='Failed',
-                 formatter=default_log_formatter
-    ):
+    def __init__(self, graph: TaskGraph, log_formatter, title, callback=None):
+        """Init a visualizer with the task graph and other options.
+
+        Parameters
+        ----------
+        title : str
+            The title of TUI, will be displayed at left bottom corner.
+        callback : functoin
+            A function which accepts a boolean indicating whether execution succeeds.
+            It will be called when execution finishes.
+        log_formatter: logging.Formatter
+            An instance of logging.Formatter. Defaults to gtui.utils.default_log_formatter.
+        """
+
         self.tasks = graph.tasks
-        self.success_msg = success_msg
-        self.fail_msg = fail_msg
-        self.executor = Executor(graph, callback=self.desktop_notify_result)
+        self.executor = Executor(graph, callback=callback)
 
         self.selected_index = None
         self.index2tab = {}
@@ -192,13 +199,13 @@ class Visualizer:
             self.index2task_tab[index] = tab
 
         main_debug_tab_index = self.TAB_INDEX[len(self.tasks)]
-        main_debug_tab = TabForMainThreadLog(main_debug_tab_index, self.executor, formatter)
+        main_debug_tab = TabForMainThreadLog(main_debug_tab_index, self.executor, log_formatter)
         self.index2tab[main_debug_tab_index] = main_debug_tab
         self.index2debug_tab[main_debug_tab_index] = main_debug_tab
 
         for i, task in enumerate(self.tasks):
             index = self.TAB_INDEX[i + len(self.tasks) + 1]
-            tab = TabForTaskLog(index, task, self.executor, formatter)
+            tab = TabForTaskLog(index, task, self.executor, log_formatter)
             self.index2tab[index] = tab
             self.index2debug_tab[index] = tab
 
@@ -317,12 +324,6 @@ class Visualizer:
             (self.P_KEY, "Q"), ": exits",
         ]
         self.txt_footer.set_text(text_content)
-
-    def desktop_notify_result(self, is_success):
-        if is_success:
-            notify.send(title='Gli Info', content=self.success_msg)
-        else:
-            notify.send(title='Gli Error', content=self.fail_msg)
 
     def run(self):
         self.executor.start_execution()
