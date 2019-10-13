@@ -263,26 +263,28 @@ class Visualizer:
         )
 
     def handle_input(self, key):
-        if key in ('q', 'Q'):
-            raise urwid.ExitMainLoop()
-
         if key in self.index2tab:
-            logger.debug('Switch to tab : %s', key)
+            logger.debug('%s : Switch to tab %s', key, key)
             self.set_selected_tab(key)
             self.refresh_tab_display()
             self.refresh_main_display()
+
+        if key in ('q', 'Q'):
+            raise urwid.ExitMainLoop()
 
         if key in ('y', 'Y'):
             output = self.get_selected_tab().output
             pyperclip.copy(output)
 
         if key == 'f3':
-            logger.debug('Toggle Text Follow Mode')
+            logger.debug('%s : Toggle Text Follow Mode', key)
             self.if_follow_txt = not self.if_follow_txt
             self.refresh_footer_display()
 
-        if key in (urwid.CURSOR_UP, urwid.CURSOR_DOWN, urwid.CURSOR_PAGE_UP, urwid.CURSOR_PAGE_DOWN):
+        if key in ['up', 'down', 'home', 'end', 'page up', 'page down']:
+            logger.debug('%s : Toggle Text Follow Mode', key)
             self.if_follow_txt = False
+            self.refresh_footer_display()
 
     def get_selected_tab(self):
         return self.index2tab[self.selected_index]

@@ -163,6 +163,7 @@ class Scrollable(urwid.WidgetDecoration):
             return key
 
         self._invalidate()
+        return key
 
     def mouse_event(self, size, event, button, col, row, focus):
         ow = self._original_widget
