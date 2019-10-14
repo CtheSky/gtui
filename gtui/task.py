@@ -59,6 +59,11 @@ class TaskGraph:
             It will be called when execution finishes.
         log_formatter: logging.Formatter
             An instance of logging.Formatter. Defaults to gtui.utils.default_log_formatter.
+
+        Raises
+        ------
+        ValueError
+            If there is a cycle in graph, the message describe the cycle with task names.
         """
         from .visualizer import Visualizer
         from .utils import default_log_formatter
