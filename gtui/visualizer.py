@@ -171,7 +171,7 @@ class Visualizer:
 
     TAB_INDEX = list(string.digits)[1:] + list(string.ascii_lowercase)
 
-    def __init__(self, graph: TaskGraph, log_formatter, title, callback=None):
+    def __init__(self, graph: TaskGraph, log_formatter, title, callback=None, exit_on_success=False):
         """Init a visualizer with the task graph and other options.
 
         Parameters
@@ -183,10 +183,15 @@ class Visualizer:
             It will be called when execution finishes.
         log_formatter: logging.Formatter
             An instance of logging.Formatter. Defaults to gtui.utils.default_log_formatter.
+        exit_on_success: boolean
+            Whether exit TUI if all tasks succeed. Defaults to False.
         """
-
+        self.graph = graph
         self.tasks = graph.tasks
-        self.executor = Executor(graph, callback=callback)
+        self.callback = callback
+        self.exit_on_success = exit_on_success
+        self.need_exit = False
+        self.executor = Executor(graph, callback=self.wrapped_callback)
 
         self.selected_index = None
         self.index2tab = {}
@@ -218,7 +223,7 @@ class Visualizer:
         self.scroll = urwid_scroll.Scrollable(self.txt)
         self.scroll_bar = urwid_scroll.ScrollBar(self.scroll)
         self.main_display = urwid.LineBox(self.scroll_bar)
-        self.if_follow_txt = True
+        self.should_follow_txt = True
 
         # Footer
         self.title = title
@@ -278,12 +283,12 @@ class Visualizer:
 
         if key == 'f3':
             logger.debug('%s : Toggle Text Follow Mode', key)
-            self.if_follow_txt = not self.if_follow_txt
+            self.should_follow_txt = not self.should_follow_txt
             self.refresh_footer_display()
 
         if key in ['up', 'down', 'home', 'end', 'page up', 'page down']:
             logger.debug('%s : Toggle Text Follow Mode', key)
-            self.if_follow_txt = False
+            self.should_follow_txt = False
             self.refresh_footer_display()
 
     def get_selected_tab(self):
@@ -298,8 +303,12 @@ class Visualizer:
         sb_display = self.index2tab[self.selected_index]
         output = sb_display.output
         self.txt.set_text(output)
-        if self.if_follow_txt:
+
+        if self.should_follow_txt:
             self.scroll.set_scrollpos(-1)
+
+        if self.need_exit:
+            raise urwid.ExitMainLoop()
 
     def refresh_main_display_every_second(self, loop=None, data=None):
         self.refresh_main_display()
@@ -318,7 +327,7 @@ class Visualizer:
             (self.P_TITLE, self.title),
             ' ',
             (self.P_KEY, 'F3'),
-            ': toggle tail -f mode {}'.format('[on] ' if self.if_follow_txt else '[off]'),
+            ': toggle tail -f mode {}'.format('[on] ' if self.should_follow_txt else '[off]'),
             ' ',
             (self.P_KEY, "UP"), ", ", (self.P_KEY, "DOWN"), ": scroll text ",
             (self.P_KEY, "NUMBER"), ": select tab ",
@@ -326,6 +335,13 @@ class Visualizer:
             (self.P_KEY, "Q"), ": exits",
         ]
         self.txt_footer.set_text(text_content)
+
+    def wrapped_callback(self, is_success):
+        if self.callback:
+            self.callback(is_success)
+
+        if is_success and self.exit_on_success:
+            self.need_exit = True
 
     def run(self):
         self.executor.start_execution()

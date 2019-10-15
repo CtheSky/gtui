@@ -47,7 +47,9 @@ class TaskGraph:
     def run(self,
             title='Demo',
             callback=None,
-            log_formatter=None):
+            log_formatter=None,
+            exit_on_success=False
+    ):
         """A hepler function to run this task graph
 
         Parameters
@@ -59,6 +61,8 @@ class TaskGraph:
             It will be called when execution finishes.
         log_formatter: logging.Formatter
             An instance of logging.Formatter. Defaults to gtui.utils.default_log_formatter.
+        exit_on_success: boolean
+            Whether exit TUI if all tasks succeed. Defaults to False.
 
         Raises
         ------
@@ -79,7 +83,8 @@ class TaskGraph:
             graph=self,
             title=title,
             callback=callback,
-            log_formatter=log_formatter
+            log_formatter=log_formatter,
+            exit_on_success=exit_on_success
         ).run()
 
     def has_cycle(self):
