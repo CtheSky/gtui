@@ -307,20 +307,9 @@ class Visualizer:
         if self.should_follow_txt:
             self.scroll.set_scrollpos(-1)
 
-        if self.need_exit:
-            raise urwid.ExitMainLoop()
-
-    def refresh_main_display_every_second(self, loop=None, data=None):
-        self.refresh_main_display()
-        self.loop.set_alarm_in(1, self.refresh_main_display_every_second)
-
     def refresh_tab_display(self):
         for tab in self.index2tab.values():
             tab.update_display()
-
-    def refresh_tab_display_every_half_second(self, loop=None, data=None):
-        self.refresh_tab_display()
-        self.loop.set_alarm_in(0.5, self.refresh_tab_display_every_half_second)
 
     def refresh_footer_display(self):
         text_content = [
@@ -336,6 +325,15 @@ class Visualizer:
         ]
         self.txt_footer.set_text(text_content)
 
+    def refresh_ui_every_half_second(self, loop=None, data=None):
+        self.refresh_main_display()
+        self.refresh_tab_display()
+
+        if self.need_exit:
+            raise urwid.ExitMainLoop()
+
+        self.loop.set_alarm_in(0.5, self.refresh_ui_every_half_second)
+
     def wrapped_callback(self, is_success):
         if self.callback:
             self.callback(is_success)
@@ -347,6 +345,5 @@ class Visualizer:
         self.executor.start_execution()
         self.set_selected_tab('1')
         self.refresh_footer_display()
-        self.refresh_main_display_every_second()
-        self.refresh_tab_display_every_half_second()
+        self.refresh_ui_every_half_second()
         self.loop.run()
