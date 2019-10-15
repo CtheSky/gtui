@@ -70,24 +70,26 @@ class SeparateThreadLogCollector:
 
     name2records = {}
 
-    @classmethod
-    def init_log_setting(cls):
+    def __init__(self):
+        self.name2records = {}
+
+    def init_log_setting(self):
+        collector = self
+
         class SeparateByThreadNameHandler(logging.Handler):
             def emit(self, record: logging.LogRecord):
-                cls.name2records.setdefault(record.threadName, [])
-                cls.name2records[record.threadName].append(record)
+                collector.name2records.setdefault(record.threadName, [])
+                collector.name2records[record.threadName].append(record)
 
         logging.root.handlers = []
         logging.root.addHandler(SeparateByThreadNameHandler())
         logging.root.setLevel(logging.DEBUG)
 
-    @classmethod
-    def get_thread_log_records(cls, name):
-        return cls.name2records.get(name, [])
+    def get_thread_log_records(self, name):
+        return self.name2records.get(name, [])
 
-    @classmethod
-    def get_main_thread_log_records(cls):
-        return cls.name2records.get(threading.main_thread().name, [])
+    def get_main_thread_log_records(self):
+        return self.name2records.get(threading.main_thread().name, [])
 
 
 class Executor:
@@ -108,7 +110,7 @@ class Executor:
         """
         self.graph = graph
         self.callback = callback
-        self.log_collector = SeparateThreadLogCollector
+        self.log_collector = SeparateThreadLogCollector()
         self.task2thread = {
             task:IORedirectedThread(
                 target=task.run,
