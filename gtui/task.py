@@ -40,6 +40,11 @@ class TaskGraph:
         self.tasks.append(task)
         self.task2waiting_for[task] = []
 
+    def add_tasks(self, tasks):
+        """Add a list of task to this graph"""
+        for t in tasks:
+            self.add_task(t)
+
     def add_run_dependency(self, task: Task, waiting_for: Task):
         """Add execution dependency to this graph"""
         self.task2waiting_for[task].append(waiting_for)
