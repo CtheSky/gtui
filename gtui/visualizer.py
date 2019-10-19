@@ -30,8 +30,7 @@ class Tab:
     UNICODE_CHECK_MARK = '\U00002713'
     UNICODE_SPINNER_LIST = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
 
-    def __init__(self, index, widget: urwid.Text, log_formatter=default_log_formatter):
-        self.index = index
+    def __init__(self, widget: urwid.Text, log_formatter=default_log_formatter):
         self.widget = widget
         self.selected = False
         self.focus_on_log = False
@@ -42,8 +41,7 @@ class Tab:
         self.focus_on_log = not self.focus_on_log
 
     def update_display(self):
-        txt = '{index}{selected}| {status} {name}'.format(
-            index=self.index,
+        txt = '{selected}{status} {name}'.format(
             selected='*' if self.selected else ' ',
             status=self.tab_status_str,
             name=self.name
@@ -89,8 +87,8 @@ class Tab:
 
 class TaskTab(Tab):
 
-    def __init__(self, index, task, executor, log_formatter):
-        super().__init__(index, urwid.Text(''), log_formatter)
+    def __init__(self, task, executor, log_formatter):
+        super().__init__(urwid.Text(''), log_formatter)
         self.task: Task = task
         self.executor: Executor = executor
         self.update_display()
@@ -132,9 +130,6 @@ class Visualizer:
         (P_KEY, "Q"), " : exits",
     ]
 
-    # number + ascii_letters without y & q
-    TAB_INDEX = '123456789abcdefghijklmnoprstuvwxzABCDEFGHIJKLMNOPRSTUVWXZ'
-
     def __init__(self, graph: TaskGraph, log_formatter, title, callback=None, exit_on_success=False):
         """Init a visualizer with the task graph and other options.
 
@@ -151,21 +146,16 @@ class Visualizer:
             Whether exit TUI if all tasks succeed. Defaults to False.
         """
         self.graph = graph
-        self.tasks = graph.tasks
         self.callback = callback
         self.exit_on_success = exit_on_success
         self.need_exit = False
         self.executor = Executor(graph, callback=self.wrapped_callback)
 
-        self.selected_index = None
-        self.index2tab = {}
-        self.index2task_tab = {}
-        self.index2debug_tab = {}
-        for i, task in enumerate(self.tasks):
-            index = self.TAB_INDEX[i]
-            tab = TaskTab(index, task, self.executor, log_formatter)
-            self.index2tab[index] = tab
-            self.index2task_tab[index] = tab
+        self.tabs = [TaskTab(t, self.executor, log_formatter) for t in graph.tasks]
+        self.selected_index = 0
+        self.tabs[0].selected = True
+        self.min_index = 0
+        self.max_index = len(self.tabs) - 1
 
         #################
         # Urwid Widgets #
@@ -188,10 +178,7 @@ class Visualizer:
             urwid.Divider('='),
             urwid.Text('Task'),
             urwid.Divider('=')
-        ] + [
-            self.index2task_tab[i].widget
-            for i in sorted(self.index2task_tab.keys())
-        ]
+        ] + [tab.widget for tab in self.tabs]
         self.sidebar = urwid.ListBox(self.sidebar_items)
 
         # Topmost Frame
@@ -214,11 +201,15 @@ class Visualizer:
         )
 
     def handle_input(self, key):
-        if key in self.index2tab:
-            logger.debug('%s : Switch to tab %s', key, key)
-            self.set_selected_tab(key)
-            self.refresh_tab_display()
+        if key == 'j':
+            self.set_selected_tab(min(self.max_index, self.selected_index + 1))
             self.refresh_main_display()
+            self.refresh_tab_display()
+
+        if key == 'k':
+            self.set_selected_tab(max(self.min_index, self.selected_index - 1))
+            self.refresh_main_display()
+            self.refresh_tab_display()
 
         if key == 'tab':
             self.get_selected_tab().toggle_focus()
@@ -242,15 +233,16 @@ class Visualizer:
             self.refresh_footer_display()
 
     def get_selected_tab(self):
-        return self.index2tab[self.selected_index]
+        return self.tabs[self.selected_index]
 
     def set_selected_tab(self, index):
+        self.tabs[self.selected_index].selected = False
         self.selected_index = index
-        for i, tab in self.index2tab.items():
-            tab.selected = bool(i == index)
+        self.tabs[self.selected_index].selected = True
 
     def refresh_main_display(self):
-        sb_display = self.index2tab[self.selected_index]
+        # sb_display = self.index2tab[self.selected_index]
+        sb_display = self.tabs[self.selected_index]
         self.txt.set_text(sb_display.text)
 
         if sb_display.focus_on_log:
@@ -262,7 +254,7 @@ class Visualizer:
             self.scroll.set_scrollpos(-1)
 
     def refresh_tab_display(self):
-        for tab in self.index2tab.values():
+        for tab in self.tabs:
             tab.update_display()
 
     def refresh_footer_display(self):
@@ -279,9 +271,13 @@ class Visualizer:
         ]
         self.txt_footer.set_text(text_content)
 
-    def refresh_ui_every_half_second(self, loop=None, data=None):
-        self.refresh_main_display()
+    def refresh_ui(self):
         self.refresh_tab_display()
+        self.refresh_main_display()
+        self.refresh_footer_display()
+
+    def refresh_ui_every_half_second(self, loop=None, data=None):
+        self.refresh_ui()
 
         if self.need_exit:
             raise urwid.ExitMainLoop()
@@ -297,7 +293,6 @@ class Visualizer:
 
     def run(self):
         self.executor.start_execution()
-        self.set_selected_tab('1')
         self.refresh_footer_display()
         self.refresh_ui_every_half_second()
         self.loop.run()
