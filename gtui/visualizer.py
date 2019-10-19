@@ -30,11 +30,16 @@ class Tab:
     UNICODE_CHECK_MARK = '\U00002713'
     UNICODE_SPINNER_LIST = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
 
-    def __init__(self, index, widget: urwid.Text):
+    def __init__(self, index, widget: urwid.Text, log_formatter=default_log_formatter):
         self.index = index
         self.widget = widget
         self.selected = False
+        self.focus_on_log = False
         self.spinner_index = 0
+        self.log_formatter = log_formatter
+
+    def toggle_focus(self):
+        self.focus_on_log = not self.focus_on_log
 
     def update_display(self):
         txt = '{index}{selected}| {status} {name}'.format(
@@ -58,6 +63,18 @@ class Tab:
         return ' '
 
     @property
+    def text(self):
+        return self.log_output if self.focus_on_log else self.output
+
+    @property
+    def log_output(self):
+        return'\n'.join([self.log_formatter.format(r) for r in self.records])
+
+    @property
+    def output(self):
+        """str : output of the sidebar task"""
+
+    @property
     def name(self):
         """str : display name of the sidebar item"""
 
@@ -66,48 +83,11 @@ class Tab:
         """str : one of the enums defined in TaskStatus"""
 
     @property
-    def output(self):
-        """str : output of the sidebar task"""
-
-class TabForTaskOutput(Tab):
-    """Tab to display task output"""
-
-    def __init__(self, index, task, executor):
-        super().__init__(index, urwid.Text(''))
-        self.task: Task = task
-        self.executor: Executor = executor
-        self.update_display()
-
-    @property
-    def name(self):
-        return self.task.name
-
-    @property
-    def status(self):
-        return self.executor.get_task_status(self.task)
-
-    @property
-    def output(self):
-        return self.executor.get_task_output(self.task)
-
-class TabForLog(Tab):
-    """Tab to display logs"""
-
-    def __init__(self, index, widget: urwid.Text, log_formatter: logging.Formatter):
-        super().__init__(index, widget)
-        self.log_formatter = log_formatter
-
-    @property
     def records(self):
         """Return a list of log records"""
 
-    @property
-    def output(self):
-        output = '\n'.join([self.log_formatter.format(r) for r in self.records])
-        return output
 
-class TabForTaskLog(TabForLog):
-    """Tab to display task logs"""
+class TaskTab(Tab):
 
     def __init__(self, index, task, executor, log_formatter):
         super().__init__(index, urwid.Text(''), log_formatter)
@@ -124,29 +104,12 @@ class TabForTaskLog(TabForLog):
         return self.executor.get_task_status(self.task)
 
     @property
+    def output(self):
+        return self.executor.get_task_output(self.task)
+
+    @property
     def records(self):
         return self.executor.get_task_log_records(self.task)
-
-
-class TabForMainThreadLog(TabForLog):
-    """Tab to display TUI main event loop logs"""
-
-    def __init__(self, index, executor, log_formatter):
-        super().__init__(index, urwid.Text(''), log_formatter)
-        self.executor: Executor = executor
-        self.update_display()
-
-    @property
-    def name(self):
-        return 'Main Event Loop'
-
-    @property
-    def status(self):
-        return TaskStatus.Running
-
-    @property
-    def records(self):
-        return self.executor.get_main_thread_log_records()
 
 
 class Visualizer:
@@ -169,7 +132,8 @@ class Visualizer:
         (P_KEY, "Q"), " : exits",
     ]
 
-    TAB_INDEX = list(string.digits)[1:] + list(string.ascii_lowercase)
+    # number + ascii_letters without y & q
+    TAB_INDEX = '123456789abcdefghijklmnoprstuvwxzABCDEFGHIJKLMNOPRSTUVWXZ'
 
     def __init__(self, graph: TaskGraph, log_formatter, title, callback=None, exit_on_success=False):
         """Init a visualizer with the task graph and other options.
@@ -199,20 +163,9 @@ class Visualizer:
         self.index2debug_tab = {}
         for i, task in enumerate(self.tasks):
             index = self.TAB_INDEX[i]
-            tab = TabForTaskOutput(index, task, self.executor)
+            tab = TaskTab(index, task, self.executor, log_formatter)
             self.index2tab[index] = tab
             self.index2task_tab[index] = tab
-
-        main_debug_tab_index = self.TAB_INDEX[len(self.tasks)]
-        main_debug_tab = TabForMainThreadLog(main_debug_tab_index, self.executor, log_formatter)
-        self.index2tab[main_debug_tab_index] = main_debug_tab
-        self.index2debug_tab[main_debug_tab_index] = main_debug_tab
-
-        for i, task in enumerate(self.tasks):
-            index = self.TAB_INDEX[i + len(self.tasks) + 1]
-            tab = TabForTaskLog(index, task, self.executor, log_formatter)
-            self.index2tab[index] = tab
-            self.index2debug_tab[index] = tab
 
         #################
         # Urwid Widgets #
@@ -222,7 +175,7 @@ class Visualizer:
         self.txt = urwid.Text('')
         self.scroll = urwid_scroll.Scrollable(self.txt)
         self.scroll_bar = urwid_scroll.ScrollBar(self.scroll)
-        self.main_display = urwid.LineBox(self.scroll_bar)
+        self.main_display = urwid.LineBox(self.scroll_bar, title='Output', title_align='left')
         self.should_follow_txt = True
 
         # Footer
@@ -238,13 +191,6 @@ class Visualizer:
         ] + [
             self.index2task_tab[i].widget
             for i in sorted(self.index2task_tab.keys())
-        ] + [
-            urwid.Divider('='),
-            urwid.Text('Debug Info'),
-            urwid.Divider('=')
-        ] + [
-            self.index2debug_tab[i].widget
-            for i in sorted(self.index2debug_tab.keys())
         ]
         self.sidebar = urwid.ListBox(self.sidebar_items)
 
@@ -274,11 +220,15 @@ class Visualizer:
             self.refresh_tab_display()
             self.refresh_main_display()
 
+        if key == 'tab':
+            self.get_selected_tab().toggle_focus()
+            self.refresh_main_display()
+
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
 
         if key in ('y', 'Y'):
-            output = self.get_selected_tab().output
+            output = self.get_selected_tab().text
             pyperclip.copy(output)
 
         if key == 'f3':
@@ -301,8 +251,12 @@ class Visualizer:
 
     def refresh_main_display(self):
         sb_display = self.index2tab[self.selected_index]
-        output = sb_display.output
-        self.txt.set_text(output)
+        self.txt.set_text(sb_display.text)
+
+        if sb_display.focus_on_log:
+            self.main_display.set_title('  Output | * Log')
+        else:
+            self.main_display.set_title('* Output |   Log')
 
         if self.should_follow_txt:
             self.scroll.set_scrollpos(-1)
