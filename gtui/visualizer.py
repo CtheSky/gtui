@@ -267,8 +267,7 @@ class Visualizer:
             ' ',
             (self.P_KEY, "tab"), ": switch output/log ",
             (self.P_KEY, "j/k"), ": switch task ",
-            (self.P_KEY, "h/l"), ": page up/down text ",
-            (self.P_KEY, "↑/↓"), ": scroll text ",
+            (self.P_KEY, "h/l/↑/↓"), ": scroll text ",
             (self.P_KEY, "y"), ": copy text ",
             (self.P_KEY, "q"), ": exits",
         ]
