@@ -10,6 +10,7 @@ import logging
 
 import urwid
 import pyperclip
+from additional_urwid_widgets.widgets.indicative_listbox import IndicativeListBox
 
 from .task import Task, TaskStatus, TaskGraph
 from .executor import Executor
@@ -168,18 +169,18 @@ class Visualizer:
         self.main_display = urwid.LineBox(self.scroll_bar, title='Output', title_align='left')
         self.should_follow_txt = True
 
+        self.scroll_bar._command_map['h'] = urwid.CURSOR_PAGE_UP
+        self.scroll_bar._command_map['l'] = urwid.CURSOR_PAGE_DOWN
+
         # Footer
         self.title = title
         self.txt_footer = urwid.Text('')
         self.footer = urwid.AttrMap(self.txt_footer, self.P_FOOTER)
 
         # SideBar
-        self.sidebar_items = [
-            urwid.Divider('='),
-            urwid.Text('Task'),
-            urwid.Divider('=')
-        ] + [tab.widget for tab in self.tabs]
-        self.sidebar = urwid.ListBox(self.sidebar_items)
+        self.sidebar_items = [tab.widget for tab in self.tabs]
+        self.tab_box = IndicativeListBox(self.sidebar_items)
+        self.sidebar = urwid.LineBox(self.tab_box, title='Task', title_align='left')
 
         # Topmost Frame
         self.columns = urwid.Columns(
@@ -215,19 +216,19 @@ class Visualizer:
             self.get_selected_tab().toggle_focus()
             self.refresh_main_display()
 
-        if key in ('q', 'Q'):
+        if key == 'q':
             raise urwid.ExitMainLoop()
 
-        if key in ('y', 'Y'):
+        if key == 'y':
             output = self.get_selected_tab().text
             pyperclip.copy(output)
 
-        if key == 'f3':
+        if key == 't':
             logger.debug('%s : Toggle Text Follow Mode', key)
             self.should_follow_txt = not self.should_follow_txt
             self.refresh_footer_display()
 
-        if key in ['up', 'down', 'home', 'end', 'page up', 'page down']:
+        if key in ['h', 'l', 'up', 'down']:
             logger.debug('%s : Toggle Text Follow Mode', key)
             self.should_follow_txt = False
             self.refresh_footer_display()
@@ -239,9 +240,9 @@ class Visualizer:
         self.tabs[self.selected_index].selected = False
         self.selected_index = index
         self.tabs[self.selected_index].selected = True
+        self.tab_box.select_item(self.selected_index)
 
     def refresh_main_display(self):
-        # sb_display = self.index2tab[self.selected_index]
         sb_display = self.tabs[self.selected_index]
         self.txt.set_text(sb_display.text)
 
@@ -261,13 +262,15 @@ class Visualizer:
         text_content = [
             (self.P_TITLE, self.title),
             ' ',
-            (self.P_KEY, 'F3'),
-            ': toggle tail -f mode {}'.format('[on] ' if self.should_follow_txt else '[off]'),
+            (self.P_KEY, 't'),
+            ': tail -f {}'.format('[on] ' if self.should_follow_txt else '[off]'),
             ' ',
-            (self.P_KEY, "UP"), ", ", (self.P_KEY, "DOWN"), ": scroll text ",
-            (self.P_KEY, "NUMBER"), ": select tab ",
-            (self.P_KEY, "Y"), ": copy text ",
-            (self.P_KEY, "Q"), ": exits",
+            (self.P_KEY, "tab"), ": switch output/log ",
+            (self.P_KEY, "j/k"), ": switch task ",
+            (self.P_KEY, "h/l"), ": page up/down text ",
+            (self.P_KEY, "↑/↓"), ": scroll text ",
+            (self.P_KEY, "y"), ": copy text ",
+            (self.P_KEY, "q"), ": exits",
         ]
         self.txt_footer.set_text(text_content)
 
