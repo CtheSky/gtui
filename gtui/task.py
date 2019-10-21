@@ -20,6 +20,12 @@ class Task:
     def run(self):
         self.func(*self.args, **self.kwargs)
 
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return isinstance(other, Task) and self.name == other.name
+
     def __repr__(self):
         return 'gtui.Task(name={}, func={!r}, args={!r}, kwargs={!r})'.format(
             self.name,
@@ -35,19 +41,43 @@ class TaskGraph:
         self.tasks = []
         self.task2waiting_for = {}
 
-    def add_task(self, task: Task):
-        """Add task to this graph"""
-        self.tasks.append(task)
-        self.task2waiting_for[task] = []
+    def add_task(self, task, waiting_for=None):
+        """Add task to this graph
+
+        Parameters
+        ----------
+        task : Task
+            a task instance
+        waiting_for : Task or list
+            a task or a list of tasks to wait for
+        """
+        if task not in self.tasks:
+            self.tasks.append(task)
+            self.task2waiting_for[task] = []
+
+        if waiting_for:
+            self.add_dependency(task, waiting_for)
 
     def add_tasks(self, tasks):
         """Add a list of task to this graph"""
         for t in tasks:
             self.add_task(t)
 
-    def add_run_dependency(self, task: Task, waiting_for: Task):
-        """Add execution dependency to this graph"""
-        self.task2waiting_for[task].append(waiting_for)
+    def add_dependency(self, task, waiting_for):
+        """Add execution dependency to this graph
+
+        Parameters
+        ----------
+        task : Task
+            a task instance
+        waiting_for : Task or list
+            a task or a list of tasks to wait for
+        """
+        if isinstance(waiting_for, Task):
+            self.task2waiting_for[task].append(waiting_for)
+
+        if isinstance(waiting_for, list):
+            self.task2waiting_for[task] += waiting_for
 
     def run(self,
             title='Demo',
@@ -91,6 +121,10 @@ class TaskGraph:
             log_formatter=log_formatter,
             exit_on_success=exit_on_success
         ).run()
+
+    def has_task(self, task):
+        """Whether a task is in this graph"""
+        return task in self.tasks
 
     def has_cycle(self):
         """Returns a list of tasks contained in a cycle if there is one or None if no cycle."""
