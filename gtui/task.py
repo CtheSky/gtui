@@ -166,5 +166,5 @@ class TaskGraph:
         for t in tasks:
             graph.add_task(t)
         for t1, t2 in zip(tasks[:-1], tasks[1:]):
-            graph.add_run_dependency(t2, waiting_for=t1)
+            graph.add_dependency(t2, waiting_for=t1)
         return graph
