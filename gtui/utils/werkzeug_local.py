@@ -1,3 +1,4 @@
+"""Copied and Modified from werkzeug.local, Copyright 2007 Pallets"""
 import sys
 import copy
 
