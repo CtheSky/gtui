@@ -49,6 +49,14 @@ g.run()
 `TaskGraph.run` starts the text user interface, and you can navigate through tasks, see their status, output and logs:
 ![tui_demo.gif](https://github.com/CtheSky/gtui/blob/master/img/tui_demo.gif)
 
+Keybindings:
+* t : toggle tail -f mode, will follow text when enabled
+* tab : switch between output & log
+* j/k : select previous/next task
+* h/l : page up/down
+* ↑/↓ : scroll up/down one line
+* y : copy text
+* q : exit
 
 ## Task & TaskGraph
 
@@ -93,7 +101,7 @@ g.run(
 )
 ```
 
-`callback` can be used to notify the execution result, it will be called with an boolean indicating whether execution succeed. You can send an email, sms or call a webhook, `gtui.callback` has some common callbacks:
+`callback` can be used to notify the execution result, it will be called with an boolean indicating whether execution succeed. `gtui.callback` has some common callbacks:
 
 ```python
 # emit a desktop notification, use osascript on mac and notify-send on linux
