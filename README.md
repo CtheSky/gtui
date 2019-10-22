@@ -108,3 +108,19 @@ g.run(
 from gtui import callback
 g.run(callback.desktop_nofity(title='Plz See Here!', success_msg='Success', fail_msg='Fail'))
 ```
+
+## Possible Problem with Stdout
+
+Writing to stdout will break the TUI display. `gtui` runs each task in a new thread with `sys.stdout` replaced so functions like `print` will just work fine. When creating a new thread inside a task, `gtui.IORedirectedThread` can be used to achieve the same result:
+
+```python
+from gtui import IORedirectedThread
+
+t = IORedirectedThread(target=print, args=['hello world'])
+t.start()
+t.join()
+
+content = t.get_stdout_content()
+```
+
+However, `gtui` doesn't try to deal with other cases so you should take care of it by yourself.
