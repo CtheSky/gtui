@@ -1,6 +1,6 @@
 ## gtui
 
-A task executor with text-based user interface, able to:
+Task scheduler & executor with text-based user interface, able to:
 
 * declare task & dependency as a graph
 * execute task graph
