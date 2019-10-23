@@ -90,8 +90,8 @@ class TaskTab(Tab):
 
     def __init__(self, task, executor, log_formatter):
         super().__init__(urwid.Text(''), log_formatter)
-        self.task: Task = task
-        self.executor: Executor = executor
+        self.task = task
+        self.executor = executor
         self.update_display()
 
     @property
