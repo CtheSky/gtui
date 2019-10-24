@@ -11,11 +11,15 @@ Task scheduler & executor with text-based user interface, able to:
 * Show task status, stdout & log 
 * Provide a nice user interface
 
-To install:
+## Why this
+I always have a lot of scripts to run. I want to execute them parallelly in a certain order and be able to check their status, output & log in a easy way. So I built this package.   
+
+## Installation
 
 ```
 $ pip install gtui
 ```
+Note: it's not supported on windows, you need to use cygwin or wsl.
 
 ## Quickstart
 
