@@ -1,11 +1,15 @@
 ## gtui
 
+![badge>python3.4+](https://img.shields.io/badge/python-3.4%2B-blue)
+![badge license GPL](https://img.shields.io/badge/license-GPL-blue)
+![window not supported](https://img.shields.io/badge/windows-not%20supported-red)
+
 Task scheduler & executor with text-based user interface, able to:
 
-* declare task & dependency as a graph
-* execute task graph
-* show task status, stdout & log 
-* provide a nice user interface
+* Declare task & dependency as a graph
+* Execute task graph
+* Show task status, stdout & log 
+* Provide a nice user interface
 
 To install:
 
