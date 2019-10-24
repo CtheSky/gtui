@@ -12,7 +12,7 @@ Task scheduler & executor with text-based user interface, able to:
 * Provide a nice user interface
 
 ## Why this
-I always have a lot of scripts to run. I want to execute them parallelly in a certain order and be able to check their status, output & log in a easy way. So I built this package.   
+I always have a lot of scripts to run. I want to execute them parallelly in a certain order and be able to check their status, output & log in an easy way. So I built this package.   
 
 ## Installation
 
