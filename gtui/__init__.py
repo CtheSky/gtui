@@ -3,4 +3,4 @@ from .task import Task, TaskGraph
 from .executor import IORedirectedThread
 from . import callback
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
