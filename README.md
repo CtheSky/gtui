@@ -1,17 +1,25 @@
 ## gtui
 
+![badge>python3.4+](https://img.shields.io/badge/python-3.4%2B-blue)
+![badge license GPL](https://img.shields.io/badge/license-GPL-blue)
+![window not supported](https://img.shields.io/badge/windows-not%20supported-red)
+
 Task scheduler & executor with text-based user interface, able to:
 
-* declare task & dependency as a graph
-* execute task graph
-* show task status, stdout & log 
-* provide a nice user interface
+* Declare task & dependency as a graph
+* Execute task graph
+* Show task status, stdout & log 
+* Provide a nice user interface
 
-To install:
+## Why this
+I always have a lot of scripts to run. I want to execute them parallelly in a certain order and be able to check their status, output & log in an easy way. So I built this package.   
+
+## Installation
 
 ```
 $ pip install gtui
 ```
+Note: it's not supported on windows, you need to use cygwin or wsl.
 
 ## Quickstart
 
