@@ -4,6 +4,8 @@
 ![badge license GPL](https://img.shields.io/badge/license-GPL-blue)
 ![window not supported](https://img.shields.io/badge/windows-not%20supported-red)
 
+[中文README](https://github.com/CtheSky/gtui/blob/master/README_CN.md)
+
 Task scheduler & executor with text-based user interface, able to:
 
 * Declare task & dependency as a graph
